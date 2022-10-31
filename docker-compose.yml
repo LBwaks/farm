@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+
+  db:
+    image: postgres:15-alpine
+    hostname: db
+    volumes:
+     - ./data/db:/var/lib/postgresql/data
+    environment:
+     - POSTGRES_DB=farm
+     - POSTGRES_USER=postgres
+     - POSTGRES_PASSWORD=postgres
+    ports:
+     - "5432:5432"
+    container_name: postgres_db
+    restart: always
+
+  app:
+    build: .
+    volumes:
+     - .:/farm
+    ports:
+     - 8000:8000
+    image : app:farm
+    container_name: farm_container
+    command: python manage.py runserver 0.0.0.0:8000
+    environment:
+     - DB_HOST=db
+     - DB_NAME=farm
+     - DB_USER=postgres
+     - DB_PASS=password
+    depends_on:
+     - db
+  redis:
+    image: redis:7.0.5-alpine
+    container_name: redis
+  celery:
+    restart: always
+    build: 
+      context: .
+    command: celery -A core worker -1 INFO
+    volumes:
+      - ./:farm
+    container_name: celery
+    environment:
+     - DB_HOST=db
+     - DB_NAME=farm
+     - DB_USER=postgres
+     - DB_PASS=password
+
+    depends_on:
+       - db
+       - redis
+       - app
+
+    
+  
+  
+  
+  pgadmin:
+    container_name: pgadmin4
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+         PGADMIN_DEFAULT_EMAIL: root@root.com
+         PGADMIN_DEFAULT_PASSWORD: root
+    ports:
+       - "5050:80"
+    volumes:
+     - ./data/pgadmin-data:/var/lib/pgadmin
+# networks:
+#   app_net:
+#      ipam:
+#        driver: default
+#        config:
+#          - subnet : '192.168.0.0/24'
+#            gateway: 192.168.0.1
+   
+
+
